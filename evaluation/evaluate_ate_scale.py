@@ -40,57 +40,41 @@ import sys
 import numpy
 import argparse
 import associate
+import numpy as np
 
-def align(model,data):
-    """Align two trajectories using the method of Horn (closed-form).
-    
-    Input:
-    model -- first trajectory (3xn)
-    data -- second trajectory (3xn)
-    
-    Output:
-    rot -- rotation matrix (3x3)
-    trans -- translation vector (3x1)
-    trans_error -- translational error per point (1xn)
-    """
-
-    numpy.set_printoptions(precision=3,suppress=True)
+def align(model, data):
+    """Align two trajectories using the method of Horn (closed-form)."""
+    np.set_printoptions(precision=3, suppress=True)
     model_zerocentered = model - model.mean(1)
     data_zerocentered = data - data.mean(1)
     
-    W = numpy.zeros( (3,3) )
+    W = np.zeros((3, 3))
     for column in range(model.shape[1]):
-        W += numpy.outer(model_zerocentered[:,column],data_zerocentered[:,column])
-    U,d,Vh = numpy.linalg.linalg.svd(W.transpose())
-    S = numpy.matrix(numpy.identity( 3 ))
-    if(numpy.linalg.det(U) * numpy.linalg.det(Vh)<0):
-        S[2,2] = -1
-    rot = U*S*Vh
+        W += np.outer(model_zerocentered[:, column], data_zerocentered[:, column])
+    U, d, Vh = np.linalg.svd(W.transpose())
+    S = np.matrix(np.identity(3))
+    if np.linalg.det(U) * np.linalg.det(Vh) < 0:
+        S[2, 2] = -1
+    rot = U * S * Vh
 
-    rotmodel = rot*model_zerocentered
+    rotmodel = rot * model_zerocentered
     dots = 0.0
     norms = 0.0
 
     for column in range(data_zerocentered.shape[1]):
-        dots += numpy.dot(data_zerocentered[:,column].transpose(),rotmodel[:,column])
-        normi = numpy.linalg.norm(model_zerocentered[:,column])
-        norms += normi*normi
+        dots += np.dot(data_zerocentered[:, column].transpose(), rotmodel[:, column])
+        normi = np.linalg.norm(model_zerocentered[:, column])
+        norms += normi * normi
 
-    s = float(dots/norms)    
+    s = float(dots / norms)    
     
-    transGT = data.mean(1) - s*rot * model.mean(1)
-    trans = data.mean(1) - rot * model.mean(1)
-
-    model_alignedGT = s*rot * model + transGT
-    model_aligned = rot * model + trans
-
-    alignment_errorGT = model_alignedGT - data
+    trans = data[:, 0] - s * rot * model[:, 0]  # Use the first point for initial alignment
+    
+    model_aligned = s * rot * model + trans
     alignment_error = model_aligned - data
-
-    trans_errorGT = numpy.sqrt(numpy.sum(numpy.multiply(alignment_errorGT,alignment_errorGT),0)).A[0]
-    trans_error = numpy.sqrt(numpy.sum(numpy.multiply(alignment_error,alignment_error),0)).A[0]
+    trans_error = np.sqrt(np.sum(np.multiply(alignment_error, alignment_error), 0)).A[0]
         
-    return rot,transGT,trans_errorGT,trans,trans_error, s
+    return rot, trans, trans_error, s
 
 def plot_traj(ax,stamps,traj,style,color,label):
     """
@@ -115,15 +99,13 @@ def plot_traj(ax,stamps,traj,style,color,label):
             x.append(traj[i][0])
             y.append(traj[i][1])
         elif len(x)>0:
-            ax.plot(x,y,style,color=color,label=label,linewidth=0.5)  # Reduced linewidth here
+            ax.plot(x,y,style,color=color,label=label,linewidth=0.5)
             label=""
             x=[]
             y=[]
         last= stamps[i]
     if len(x)>0:
-        ax.plot(x,y,style,color=color,label=label,linewidth=0.5)  # Reduced linewidth here
-
-            
+        ax.plot(x,y,style,color=color,label=label,linewidth=0.5)
 
 if __name__=="__main__":
     # parse command line
@@ -155,16 +137,16 @@ if __name__=="__main__":
     sorted_second_list = sorted(second_list.items())
 
     second_xyz_full = numpy.matrix([[float(value)*float(args.scale) for value in item[1][0:3]] for item in sorted_second_list]).transpose()
-    rot,transGT,trans_errorGT,trans,trans_error, scale = align(second_xyz,first_xyz)
+    rot, trans, trans_error, scale = align(second_xyz, first_xyz)
     
     second_xyz_aligned = scale * rot * second_xyz + trans
     second_xyz_notscaled = rot * second_xyz + trans
     second_xyz_notscaled_full = rot * second_xyz_full + trans
     
-    first_stamps = sorted(first_list.keys())  # Sort the keys
+    first_stamps = sorted(first_list.keys())
     first_xyz_full = numpy.matrix([[float(value) for value in first_list[b][0:3]] for b in first_stamps]).transpose()
     
-    second_stamps = sorted(second_list.keys())  # Sort the keys
+    second_stamps = sorted(second_list.keys())
     second_xyz_full = numpy.matrix([[float(value)*float(args.scale) for value in second_list[b][0:3]] for b in second_stamps]).transpose()
     second_xyz_full_aligned = scale * rot * second_xyz_full + trans
     
@@ -178,12 +160,11 @@ if __name__=="__main__":
         print("absolute_translational_error.max %f m"%numpy.max(trans_error))
         print("max idx: %i" %numpy.argmax(trans_error))
     else:
-        print("%f,%f,%f" % (numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error)), scale, numpy.sqrt(numpy.dot(trans_errorGT,trans_errorGT) / len(trans_errorGT))))
+        print("%f,%f" % (numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error)), scale))
     
     if args.verbose2:
         print("compared_pose_pairs %d pairs"%(len(trans_error)))
         print("absolute_translational_error.rmse %f m"%numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error)))
-        print("absolute_translational_errorGT.rmse %f m"%numpy.sqrt(numpy.dot(trans_errorGT,trans_errorGT) / len(trans_errorGT)))
 
     if args.save_associations:
         file = open(args.save_associations,"w")
@@ -199,21 +180,19 @@ if __name__=="__main__":
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
-        import matplotlib.pylab as pylab
-        from matplotlib.patches import Ellipse
-        fig = plt.figure(figsize=(8, 8))  # Adjust figure size if needed
+        
+        fig = plt.figure(figsize=(8, 8))
         ax = fig.add_subplot(111)
-        plot_traj(ax,first_stamps,first_xyz_full.transpose().A,'-',"black","ground truth")
-        plot_traj(ax,second_stamps,second_xyz_full_aligned.transpose().A,'-',"blue","estimated")
-        #label="difference"
-        #for (a,b),(x1,y1,z1),(x2,y2,z2) in zip(matches,first_xyz.transpose().A,second_xyz_aligned.transpose().A):
-            #ax.plot([x1,x2],[y1,y2],'-',color="red",label=label,linewidth=0.5)  # Reduced linewidth here
-            #label=""
-            
+        
+        # Plot ground truth
+        ax.plot(first_xyz[0, :].A[0], first_xyz[1, :].A[0], '-', color="black", label="ground truth", linewidth=1.5)
+        
+        # Plot aligned estimated trajectory
+        ax.plot(second_xyz_aligned[0, :].A[0], second_xyz_aligned[1, :].A[0], '-', color="blue", label="estimated", linewidth=1.5)
+        
         ax.legend(loc='upper left', fontsize='small')
-            
         ax.set_xlabel('x [m]')
         ax.set_ylabel('y [m]')
         plt.axis('equal')
-        plt.tight_layout()  # Adjust the plot to fill the figure
-        plt.savefig(args.plot, format="pdf", dpi=300)  # Increased DPI for better quality
+        plt.tight_layout()
+        plt.savefig(args.plot, format="pdf", dpi=300)
