@@ -115,13 +115,14 @@ def plot_traj(ax,stamps,traj,style,color,label):
             x.append(traj[i][0])
             y.append(traj[i][1])
         elif len(x)>0:
-            ax.plot(x,y,style,color=color,label=label)
+            ax.plot(x,y,style,color=color,label=label,linewidth=0.5)  # Reduced linewidth here
             label=""
             x=[]
             y=[]
         last= stamps[i]
     if len(x)>0:
-        ax.plot(x,y,style,color=color,label=label)
+        ax.plot(x,y,style,color=color,label=label,linewidth=0.5)  # Reduced linewidth here
+
             
 
 if __name__=="__main__":
@@ -200,18 +201,19 @@ if __name__=="__main__":
         import matplotlib.pyplot as plt
         import matplotlib.pylab as pylab
         from matplotlib.patches import Ellipse
-        fig = plt.figure()
+        fig = plt.figure(figsize=(8, 8))  # Adjust figure size if needed
         ax = fig.add_subplot(111)
         plot_traj(ax,first_stamps,first_xyz_full.transpose().A,'-',"black","ground truth")
         plot_traj(ax,second_stamps,second_xyz_full_aligned.transpose().A,'-',"blue","estimated")
         label="difference"
         for (a,b),(x1,y1,z1),(x2,y2,z2) in zip(matches,first_xyz.transpose().A,second_xyz_aligned.transpose().A):
-            ax.plot([x1,x2],[y1,y2],'-',color="red",label=label)
+            ax.plot([x1,x2],[y1,y2],'-',color="red",label=label,linewidth=0.5)  # Reduced linewidth here
             label=""
             
-        ax.legend()
+        ax.legend(loc='upper left', fontsize='small')
             
         ax.set_xlabel('x [m]')
         ax.set_ylabel('y [m]')
         plt.axis('equal')
-        plt.savefig(args.plot,format="pdf")
+        plt.tight_layout()  # Adjust the plot to fill the figure
+        plt.savefig(args.plot, format="pdf", dpi=300)  # Increased DPI for better quality
