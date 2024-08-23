@@ -64,11 +64,11 @@ int main(int argc, char **argv)
         SLAM.TrackMonocular(imGray, tframe);
 
         // Display the image (optional)
-        /*
+        
         cv::imshow("ORB-SLAM3: Current Frame", imGray);
         if(cv::waitKey(1) == 27) // ESC key
             break;
-        */
+        
     }
 
     // Stop all threads
