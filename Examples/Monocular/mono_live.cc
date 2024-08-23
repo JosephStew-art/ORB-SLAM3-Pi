@@ -5,6 +5,7 @@
 
 #include<opencv2/core/core.hpp>
 #include<opencv2/videoio.hpp>
+#include<opencv2/highgui.hpp>
 
 #include<System.h>
 
@@ -20,10 +21,9 @@ int main(int argc, char **argv)
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, true);
-    float imageScale = SLAM.GetImageScale();
 
     // Open the camera
-    cv::VideoCapture cap("/dev/video0");
+    cv::VideoCapture cap(0); // Try 0 first, if it doesn't work, try 1, 2, etc.
     if (!cap.isOpened()) {
         cerr << "ERROR: Could not open camera" << endl;
         return -1;
@@ -52,24 +52,23 @@ int main(int argc, char **argv)
 
         proccIm++;
 
-        if(imageScale != 1.f)
-        {
-            int width = im.cols * imageScale;
-            int height = im.rows * imageScale;
-            cv::resize(im, im, cv::Size(width, height));
-        }
+        // Convert to grayscale
+        cv::Mat imGray;
+        cv::cvtColor(im, imGray, cv::COLOR_BGR2GRAY);
 
         // Get timestamp
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
         double tframe = std::chrono::duration_cast<std::chrono::duration<double>>(t1.time_since_epoch()).count();
 
         // Pass the image to the SLAM system
-        SLAM.TrackMonocular(im, tframe);
+        SLAM.TrackMonocular(imGray, tframe);
 
         // Display the image (optional)
-        cv::imshow("ORB-SLAM3: Current Frame", im);
+        /*
+        cv::imshow("ORB-SLAM3: Current Frame", imGray);
         if(cv::waitKey(1) == 27) // ESC key
             break;
+        */
     }
 
     // Stop all threads
