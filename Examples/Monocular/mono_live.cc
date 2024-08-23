@@ -23,7 +23,7 @@ int main(int argc, char **argv)
     ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, true);
 
     // Open the camera
-    cv::VideoCapture cap(0); // Try 0 first, if it doesn't work, try 1, 2, etc.
+    cv::VideoCapture cap("v4l2src device=/dev/video0 ! video/x-raw, width=640, height=480, framerate=30/1 ! videoconvert ! appsink", cv::CAP_GSTREAMER);
     if (!cap.isOpened()) {
         cerr << "ERROR: Could not open camera" << endl;
         return -1;
@@ -48,6 +48,10 @@ int main(int argc, char **argv)
         {
             cerr << endl << "Failed to grab image from camera!" << endl;
             break;
+        }
+        else
+        {
+            cout << "Frame captured. Size: " << im.size() << endl;
         }
 
         proccIm++;
