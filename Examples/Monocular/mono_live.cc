@@ -49,10 +49,6 @@ int main(int argc, char **argv)
             cerr << endl << "Failed to grab image from camera!" << endl;
             break;
         }
-        else
-        {
-            cout << "Frame captured. Size: " << im.size() << endl;
-        }
 
         proccIm++;
 
