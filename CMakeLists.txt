@@ -1,6 +1,5 @@
-#add_compile_options(-std=c++14)
 cmake_minimum_required(VERSION 3.10)
-project(main)
+project(ORB_SLAM3_project)
 
 # Find OpenCV
 find_package(OpenCV REQUIRED)
@@ -26,11 +25,8 @@ include_directories(
 )
 
 # Add executable
-#add_executable(main main.cc)
-
 add_executable(main
         Examples/Monocular/main.cc)
-target_link_libraries(main ${PROJECT_NAME})
 
 # Specify the folder containing your .cc files
 file(GLOB_RECURSE ORB_SLAM3_SOURCES 
