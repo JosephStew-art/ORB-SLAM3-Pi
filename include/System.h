@@ -140,6 +140,9 @@ public:
     void Shutdown();
     bool isShutDown();
 
+    // Save camera point to a .ply file format
+    void SavePointCloud(const string &filename);
+
     // Save camera trajectory in the TUM RGB-D dataset format.
     // Only for stereo and RGB-D. This method does not work for monocular.
     // Call first Shutdown()
