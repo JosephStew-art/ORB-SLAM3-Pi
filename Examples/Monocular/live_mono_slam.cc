@@ -68,9 +68,6 @@ int main(int argc, char **argv)
         SLAM.TrackMonocular(frame, timestamp);
 
         frame_count++;
-        if (frame_count % 30 == 0) {
-            cout << "Processed " << frame_count << " frames" << endl;
-        }
     }
 
     // Stop all threads
