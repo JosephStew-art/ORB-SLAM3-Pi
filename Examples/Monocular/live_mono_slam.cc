@@ -16,6 +16,32 @@ void exit_loop_handler(int s){
    b_continue_session = false;
 }
 
+void lockCameraAttributes(cv::VideoCapture& cap) {
+    // Disable auto exposure
+    cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 0);
+    // Set a fixed exposure value (you may need to adjust this)
+    cap.set(cv::CAP_PROP_EXPOSURE, -5);  // Example value, adjust as needed
+
+    // Disable auto white balance
+    cap.set(cv::CAP_PROP_AUTO_WB, 0);
+
+    // Lock focus (if your camera supports it)
+    cap.set(cv::CAP_PROP_AUTOFOCUS, 0);
+    // Set a fixed focus value (you may need to adjust this)
+    cap.set(cv::CAP_PROP_FOCUS, 0);  // Example value, adjust as needed
+
+    // Disable auto gain
+    cap.set(cv::CAP_PROP_GAIN, 0);
+
+    // Disable auto color temperature adjustments (if supported)
+    cap.set(cv::CAP_PROP_AUTO_WB, 0);
+    
+    // Lock ISO (if your camera supports it)
+    // cap.set(cv::CAP_PROP_ISO_SPEED, 100);  // Example value, adjust as needed
+
+    // You might need to add more parameters depending on your specific camera
+}
+
 int main(int argc, char **argv)
 {
     if(argc != 3)
@@ -42,10 +68,13 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // Set camera parameters (you may need to adjust these)
+    // Set camera parameters
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
     cap.set(cv::CAP_PROP_FPS, 30);
+
+    // Lock camera attributes
+    lockCameraAttributes(cap);
 
     cv::Mat frame;
     int frame_count = 0;
@@ -60,7 +89,7 @@ int main(int argc, char **argv)
             break;
         }
 
-        // Get timestamp (you may want to use a more precise method)
+        // Get timestamp
         auto now = std::chrono::steady_clock::now();
         auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time).count() / 1000.0;
 
