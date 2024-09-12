@@ -84,11 +84,11 @@ def save_trajectory_from_ORB_SLAM(input_file: Union[Path, str], output_file: Uni
 
 
 if __name__ == "__main__":
-    input_file = "/home/pi/ORB_SLAM3/ref_pointcloud.txt" # ReferenceMapPoints seem to work better, use that file
-    output_file = "/home/pi/ORB_SLAM3/output.ply"
+    input_file = "/home/joseph/Desktop/SLAM/ORB-SLAM3-Pi/ref_pointcloud.txt" # ReferenceMapPoints seem to work better, use that file
+    output_file = "/home/joseph/Desktop/SLAM/ORB-SLAM3-Pi/output.ply"
 
-    input_trajectory = "/home/pi/ORB_SLAM3/KeyFrameTrajectory.txt"
-    output_trajectory = "/home/pi/ORB_SLAM3/output_trajectory.ply"
+    input_trajectory = "/home/joseph/Desktop/SLAM/ORB-SLAM3-Pi/KeyFrameTrajectory.txt"
+    output_trajectory = "/home/joseph/Desktop/SLAM/ORB-SLAM3-Pi/output_trajectory.ply"
 
     save_pointcloud_from_ORB_SLAM(input_file, output_file)
     save_trajectory_from_ORB_SLAM(input_trajectory, output_trajectory)

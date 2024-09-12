@@ -176,6 +176,27 @@ if __name__=="__main__":
         file.write("\n".join(["%f "%stamp+" ".join(["%f"%d for d in line]) for stamp,line in zip(second_stamps,second_xyz_notscaled_full.transpose().A)]))
         file.close()
 
+    #if args.plot:
+        #import matplotlib
+        #matplotlib.use('Agg')
+        #import matplotlib.pyplot as plt
+        
+        #fig = plt.figure(figsize=(8, 8))
+        #ax = fig.add_subplot(111)
+        
+        # Plot ground truth
+        #ax.plot(first_xyz[0, :].A[0], first_xyz[1, :].A[0], '-', color="black", label="ground truth", linewidth=1.5)
+        
+        # Plot aligned estimated trajectory
+        #ax.plot(second_xyz_aligned[0, :].A[0], second_xyz_aligned[1, :].A[0], '-', color="blue", label="estimated", linewidth=1.5)
+        
+        #ax.legend(loc='upper left', fontsize='small')
+        #ax.set_xlabel('x [m]')
+        #ax.set_ylabel('y [m]')
+        #plt.axis('equal')
+        #plt.tight_layout()
+        #plt.savefig(args.plot, format="pdf", dpi=300)
+    
     if args.plot:
         import matplotlib
         matplotlib.use('Agg')
@@ -184,11 +205,11 @@ if __name__=="__main__":
         fig = plt.figure(figsize=(8, 8))
         ax = fig.add_subplot(111)
         
-        # Plot ground truth
-        ax.plot(first_xyz[0, :].A[0], first_xyz[1, :].A[0], '-', color="black", label="ground truth", linewidth=1.5)
+        # Plot ground truth (transparent black)
+        ax.plot(first_xyz[0, :].A[0], first_xyz[1, :].A[0], '-', color="black", alpha=0, label="ground truth", linewidth=1.5)
         
-        # Plot aligned estimated trajectory
-        ax.plot(second_xyz_aligned[0, :].A[0], second_xyz_aligned[1, :].A[0], '-', color="blue", label="estimated", linewidth=1.5)
+        # Plot aligned estimated trajectory (red instead of blue)
+        ax.plot(second_xyz_aligned[0, :].A[0], second_xyz_aligned[1, :].A[0], '-', color="red", label="estimated", linewidth=1.5)
         
         ax.legend(loc='upper left', fontsize='small')
         ax.set_xlabel('x [m]')
