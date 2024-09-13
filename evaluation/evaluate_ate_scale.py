@@ -1,52 +1,14 @@
-#!/usr/bin/python
-# Software License Agreement (BSD License)
-#
-# Copyright (c) 2013, Juergen Sturm, TUM
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above
-#    copyright notice, this list of conditions and the following
-#    disclaimer in the documentation and/or other materials provided
-#    with the distribution.
-#  * Neither the name of TUM nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-
-"""
-This script computes the absolute trajectory error from the ground truth
-trajectory and the estimated trajectory.
-"""
-
 import sys
-import numpy
+import numpy as np
 import argparse
 import associate
-import numpy as np
+from scipy.spatial.distance import cdist
 
 def align(model, data):
     """Align two trajectories using the method of Horn (closed-form)."""
     np.set_printoptions(precision=3, suppress=True)
-    model_zerocentered = model - model.mean(1)
-    data_zerocentered = data - data.mean(1)
+    model_zerocentered = model - model.mean(axis=1)
+    data_zerocentered = data - data.mean(axis=1)
     
     W = np.zeros((3, 3))
     for column in range(model.shape[1]):
@@ -66,17 +28,17 @@ def align(model, data):
         normi = np.linalg.norm(model_zerocentered[:, column])
         norms += normi * normi
 
-    s = float(dots / norms)    
+    s = float(dots.item() / norms.item())  # Use .item() to avoid deprecation warning
     
-    trans = data[:, 0] - s * rot * model[:, 0]  # Use the first point for initial alignment
+    trans = data[:, 0] - s * rot * model[:, 0]
     
     model_aligned = s * rot * model + trans
     alignment_error = model_aligned - data
-    trans_error = np.sqrt(np.sum(np.multiply(alignment_error, alignment_error), 0)).A[0]
+    trans_error = np.sqrt(np.sum(np.multiply(alignment_error, alignment_error), axis=0)).A1
         
     return rot, trans, trans_error, s
 
-def plot_traj(ax,stamps,traj,style,color,label):
+def plot_traj(ax, stamps, traj, style, color, label):
     """
     Plot a trajectory using matplotlib. 
     
@@ -87,14 +49,17 @@ def plot_traj(ax,stamps,traj,style,color,label):
     style -- line style
     color -- line color
     label -- plot legend
-    
     """
-    stamps.sort()
-    interval = numpy.median([s-t for s,t in zip(stamps[1:],stamps[:-1])])
+    stamps = sorted(stamps)  # Convert to sorted list
+    interval = np.median([s-t for s,t in zip(stamps[1:],stamps[:-1])])
     x = []
     y = []
     last = stamps[0]
-    for i in range(len(stamps)):
+    
+    print(f"Debug: Number of stamps: {len(stamps)}")
+    print(f"Debug: Shape of traj: {traj.shape}")
+    
+    for i in range(min(len(stamps), len(traj))):
         if stamps[i]-last < 2*interval:
             x.append(traj[i][0])
             y.append(traj[i][1])
@@ -103,9 +68,24 @@ def plot_traj(ax,stamps,traj,style,color,label):
             label=""
             x=[]
             y=[]
-        last= stamps[i]
+        last = stamps[i]
     if len(x)>0:
         ax.plot(x,y,style,color=color,label=label,linewidth=0.5)
+
+def compute_distances(first_xyz, second_xyz_aligned):
+    """
+    Compute the shortest distance from each point in second_xyz_aligned
+    to the trajectory defined by first_xyz.
+    """
+    distances = []
+    for i in range(second_xyz_aligned.shape[1]):
+        point = second_xyz_aligned[:, i]
+        # Compute distances to all points in first_xyz
+        dists = cdist(point.T.A, first_xyz.T.A)
+        # Find the minimum distance
+        min_dist = np.min(dists)
+        distances.append(min_dist)
+    return np.array(distances)
 
 if __name__=="__main__":
     # parse command line
@@ -121,7 +101,6 @@ if __name__=="__main__":
     parser.add_argument('--save_associations', help='save associated first and aligned second trajectory to disk (format: stamp1 x1 y1 z1 stamp2 x2 y2 z2)')
     parser.add_argument('--plot', help='plot the first and the aligned second trajectory to an image (format: png)')
     parser.add_argument('--verbose', help='print all evaluation data (otherwise, only the RMSE absolute translational error in meters after alignment will be printed)', action='store_true')
-    parser.add_argument('--verbose2', help='print scale eror and RMSE absolute translational error in meters after alignment with and without scale correction', action='store_true')
     args = parser.parse_args()
 
     first_list = associate.read_file_list(args.first_file, False)
@@ -130,42 +109,41 @@ if __name__=="__main__":
     matches = associate.associate(first_list, second_list,float(args.offset),float(args.max_difference))    
     if len(matches)<2:
         sys.exit("Couldn't find matching timestamp pairs between groundtruth and estimated trajectory! Did you choose the correct sequence?")
-    first_xyz = numpy.matrix([[float(value) for value in first_list[a][0:3]] for a,b in matches]).transpose()
-    second_xyz = numpy.matrix([[float(value)*float(args.scale) for value in second_list[b][0:3]] for a,b in matches]).transpose()
-    
-    # Convert dict_items to list and sort
-    sorted_second_list = sorted(second_list.items())
 
-    second_xyz_full = numpy.matrix([[float(value)*float(args.scale) for value in item[1][0:3]] for item in sorted_second_list]).transpose()
+    first_xyz = np.matrix([[float(value) for value in first_list[a][0:3]] for a,b in matches]).transpose()
+    second_xyz = np.matrix([[float(value)*float(args.scale) for value in second_list[b][0:3]] for a,b in matches]).transpose()
+    
+    print(f"Debug: Number of matches: {len(matches)}")
+    print(f"Debug: Shape of first_xyz: {first_xyz.shape}")
+    print(f"Debug: Shape of second_xyz: {second_xyz.shape}")
+    
     rot, trans, trans_error, scale = align(second_xyz, first_xyz)
     
     second_xyz_aligned = scale * rot * second_xyz + trans
-    second_xyz_notscaled = rot * second_xyz + trans
-    second_xyz_notscaled_full = rot * second_xyz_full + trans
     
-    first_stamps = sorted(first_list.keys())
-    first_xyz_full = numpy.matrix([[float(value) for value in first_list[b][0:3]] for b in first_stamps]).transpose()
+    print(f"Debug: Shape of second_xyz_aligned: {second_xyz_aligned.shape}")
     
-    second_stamps = sorted(second_list.keys())
-    second_xyz_full = numpy.matrix([[float(value)*float(args.scale) for value in second_list[b][0:3]] for b in second_stamps]).transpose()
-    second_xyz_full_aligned = scale * rot * second_xyz_full + trans
+    # Compute distances between aligned estimated trajectory and ground truth
+    distances = compute_distances(first_xyz, second_xyz_aligned)
     
+    # Calculate mean and standard deviation
+    mean_distance = np.mean(distances)
+    std_distance = np.std(distances)
+    
+    print(f"Mean distance between estimated and ground truth: {mean_distance:.4f} m")
+    print(f"Standard deviation of distances: {std_distance:.4f} m")
+
     if args.verbose:
         print("compared_pose_pairs %d pairs"%(len(trans_error)))
-        print("absolute_translational_error.rmse %f m"%numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error)))
-        print("absolute_translational_error.mean %f m"%numpy.mean(trans_error))
-        print("absolute_translational_error.median %f m"%numpy.median(trans_error))
-        print("absolute_translational_error.std %f m"%numpy.std(trans_error))
-        print("absolute_translational_error.min %f m"%numpy.min(trans_error))
-        print("absolute_translational_error.max %f m"%numpy.max(trans_error))
-        print("max idx: %i" %numpy.argmax(trans_error))
+        print("absolute_translational_error.rmse %f m"%np.sqrt(np.dot(trans_error,trans_error) / len(trans_error)))
+        print("absolute_translational_error.mean %f m"%np.mean(trans_error))
+        print("absolute_translational_error.median %f m"%np.median(trans_error))
+        print("absolute_translational_error.std %f m"%np.std(trans_error))
+        print("absolute_translational_error.min %f m"%np.min(trans_error))
+        print("absolute_translational_error.max %f m"%np.max(trans_error))
     else:
-        print("%f,%f" % (numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error)), scale))
+        print("%f,%f" % (np.sqrt(np.dot(trans_error,trans_error) / len(trans_error)), scale))
     
-    if args.verbose2:
-        print("compared_pose_pairs %d pairs"%(len(trans_error)))
-        print("absolute_translational_error.rmse %f m"%numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error)))
-
     if args.save_associations:
         file = open(args.save_associations,"w")
         file.write("\n".join(["%f %f %f %f %f %f %f %f"%(a,x1,y1,z1,b,x2,y2,z2) for (a,b),(x1,y1,z1),(x2,y2,z2) in zip(matches,first_xyz.transpose().A,second_xyz_aligned.transpose().A)]))
@@ -173,8 +151,30 @@ if __name__=="__main__":
         
     if args.save:
         file = open(args.save,"w")
-        file.write("\n".join(["%f "%stamp+" ".join(["%f"%d for d in line]) for stamp,line in zip(second_stamps,second_xyz_notscaled_full.transpose().A)]))
+        file.write("\n".join(["%f "%stamp+" ".join(["%f"%d for d in line]) for stamp,line in zip(second_list.keys(),second_xyz_aligned.transpose().A)]))
         file.close()
+
+    if args.plot:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        
+        fig = plt.figure(figsize=(8, 8))
+        ax = fig.add_subplot(111)
+        
+        print(f"Debug: Number of first_list keys: {len(first_list.keys())}")
+        print(f"Debug: Number of second_list keys: {len(second_list.keys())}")
+        
+        plot_traj(ax, list(first_list.keys()), first_xyz.T.A, '-', "black", "ground truth")
+        plot_traj(ax, list(second_list.keys()), second_xyz_aligned.T.A, '-', "blue", "estimated")
+        
+        ax.legend(loc='upper left', fontsize='small')
+        ax.set_xlabel('x [m]')
+        ax.set_ylabel('y [m]')
+        plt.axis('equal')
+        plt.title(f'ATE: mean={mean_distance:.4f}m, std={std_distance:.4f}m')
+        plt.tight_layout()
+        plt.savefig(args.plot, format="pdf", dpi=300)
 
     #if args.plot:
         #import matplotlib
@@ -184,11 +184,11 @@ if __name__=="__main__":
         #fig = plt.figure(figsize=(8, 8))
         #ax = fig.add_subplot(111)
         
-        # Plot ground truth
-        #ax.plot(first_xyz[0, :].A[0], first_xyz[1, :].A[0], '-', color="black", label="ground truth", linewidth=1.5)
+        # Plot ground truth (transparent black)
+        #ax.plot(first_xyz[0, :].A[0], first_xyz[1, :].A[0], '-', color="black", alpha=0, label="ground truth", linewidth=1.5)
         
-        # Plot aligned estimated trajectory
-        #ax.plot(second_xyz_aligned[0, :].A[0], second_xyz_aligned[1, :].A[0], '-', color="blue", label="estimated", linewidth=1.5)
+        # Plot aligned estimated trajectory (red instead of blue)
+        #ax.plot(second_xyz_aligned[0, :].A[0], second_xyz_aligned[1, :].A[0], '-', color="red", label="estimated", linewidth=1.5)
         
         #ax.legend(loc='upper left', fontsize='small')
         #ax.set_xlabel('x [m]')
@@ -196,24 +196,3 @@ if __name__=="__main__":
         #plt.axis('equal')
         #plt.tight_layout()
         #plt.savefig(args.plot, format="pdf", dpi=300)
-    
-    if args.plot:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-        
-        fig = plt.figure(figsize=(8, 8))
-        ax = fig.add_subplot(111)
-        
-        # Plot ground truth (transparent black)
-        ax.plot(first_xyz[0, :].A[0], first_xyz[1, :].A[0], '-', color="black", alpha=0, label="ground truth", linewidth=1.5)
-        
-        # Plot aligned estimated trajectory (red instead of blue)
-        ax.plot(second_xyz_aligned[0, :].A[0], second_xyz_aligned[1, :].A[0], '-', color="red", label="estimated", linewidth=1.5)
-        
-        ax.legend(loc='upper left', fontsize='small')
-        ax.set_xlabel('x [m]')
-        ax.set_ylabel('y [m]')
-        plt.axis('equal')
-        plt.tight_layout()
-        plt.savefig(args.plot, format="pdf", dpi=300)
