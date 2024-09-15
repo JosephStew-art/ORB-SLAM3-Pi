@@ -74,7 +74,7 @@ int main(int argc, char **argv)
     cap.set(cv::CAP_PROP_FPS, 30);
 
     // Lock camera attributes
-    lockCameraAttributes(cap);
+    //lockCameraAttributes(cap);
 
     cv::Mat frame;
     int frame_count = 0;
