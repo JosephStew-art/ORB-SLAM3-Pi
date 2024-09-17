@@ -51,6 +51,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     "This is free software, and you are welcome to redistribute it" << endl <<
     "under certain conditions. See LICENSE.txt." << endl << endl;
 
+    cout << "ORB-SLAM3 was modified by Joseph Stewart in fulfillment of EEE4022S, University of Cape Town." << endl;
+
     cout << "Input sensor was set to: ";
 
     if(mSensor==MONOCULAR)
