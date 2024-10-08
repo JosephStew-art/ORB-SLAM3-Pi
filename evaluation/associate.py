@@ -26,6 +26,7 @@ def read_file_list(filename,remove_bounds):
         lines = lines[100:-100]
     list = [[v.strip() for v in line.split(" ") if v.strip()!=""] for line in lines if len(line)>0 and line[0]!="#"]
     list = [(float(l[0]),l[1:]) for l in list if len(l)>1]
+    #list = [(float(l[0])/1e9, l[1:]) for l in list if len(l)>1]  # Convert nanoseconds to seconds
     return dict(list)
 
 def associate(first_list, second_list, offset, max_difference):
