@@ -1,4 +1,4 @@
-input_file = 'f_dataset-MH01_monoldso.txt'
+input_file = 'results.txt'
 output_file = 'f_dataset-MH01_monoldso_seconds.txt'
 
 with open(input_file, 'r') as infile, open(output_file, 'w') as outfile:
