@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Constants
-DURATION = 30100  # seconds
+DURATION = 30  # seconds
 INTERVAL = 1  # second
 
 # Initialize data structures
