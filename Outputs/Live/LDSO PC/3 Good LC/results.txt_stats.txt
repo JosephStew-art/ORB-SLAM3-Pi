@@ -1,0 +1,7 @@
+======================
+5634 Frames (22.2 fps)
+26.17ms per frame (single core)
+45.04ms per frame (multi core)
+38.206x (single core)
+22.201x (multi core)
+======================
